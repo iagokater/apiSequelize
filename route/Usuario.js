@@ -5,9 +5,7 @@ router.route ("/")
     .get(usuario.getAll)
     .post(usuario.create)
 
-router.route("/:idusuario")
-    .get(usuario.getById)
-    .put(usuario.update)
-    .delete(usuario.delete);
+router.route("/login")
+    .post(usuario.login)
 
 module.exports = router;

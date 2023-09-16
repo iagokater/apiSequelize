@@ -32,6 +32,7 @@ exports.getById = function (req, res, next) {
 
 exports.create = function (req, res, next) {
     usuario.create(req.body)
+
         .then(
             value => {
                 res.status(200).json(
@@ -74,17 +75,77 @@ exports.delete = function (req, res, next) {
     })
 }
 
-exports.login = function (req, res, next) {
-    usuario.findOne({
+
+exports.login = function(req, res, next) {
+    
+    usuario.findAll({
         where: {
-            email: req.body.email,
-            senha: req.body.senha
+            "email": req.body.email
         }
     })
-    .then(value => {
-        res.status(200).json(value);
-    })
-    .catch(errors => {
-        next(errors);
-    })
+    .then(
+        values => {
+            if (values.length) {
+
+                usuario.validatePassword(req.body.senha, values, (error, auth) => {
+                    
+                    if (error) {
+                        error.status = 500;
+                        next(error);
+                    } else {
+
+                        if (!auth) {
+
+                            res.status(200).json(
+                                {
+                                    "auth": false
+                                }
+                            )
+
+                        } else {
+
+                            usuario.generateToken(values, (err, token) => {
+
+                                if (err) {
+
+                                    
+                                        err.status = 500;
+                                        next(err);
+
+                                } else {
+
+                                    values[0].senha = undefined;
+
+                                    res.status(201).json(
+                                        {
+                                            "auth": true,
+                                            "token": token,
+                                            "user": values[0]
+                                        }
+                                    )
+
+                                }
+
+                            });
+
+                        }
+
+                    }
+                
+                });
+                    
+            } else {
+
+                res.status(404).json({
+                    "auth": false
+                });
+
+            }
+        }
+    )
+    .catch(
+        errors => {
+            next(errors);
+        }
+    )
 }

@@ -5,7 +5,6 @@ module.exports = (Types) => {
             type: Types.INTEGER(11),
             autoIncrement: true,
             primaryKey: true,
-            field: "idUsuario"
         },
         nome: {
             type: Types.STRING,

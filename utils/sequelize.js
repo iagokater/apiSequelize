@@ -15,10 +15,14 @@ const config = {
   }
 };
 
+
+
 const Sequelize = require('sequelize');
 const Model = Sequelize.Model;
-
+const SECRET_KEY = process.env.JWT_SECRET_KEY;
 const bcrypt = require('bcrypt');
+const jwt = require('jsonwebtoken');
+
 const CargoModel = require('../model/Cargo');
 const NegocioModel = require('../model/Negocio');
 const PipelineModel = require('../model/Pipeline');
@@ -27,8 +31,8 @@ const EntrevistaModel = require('../model/Entrevista');
 const UsuarioModel = require('../model/Usuario');
 
 
-let hashPassword = (password) => {
-  let hash = bcrypt.hashSync(password, 10);
+let hashPassword = (senha) => {
+  let hash = bcrypt.hashSync(senha, 10);
   return hash;
 }
 
@@ -49,10 +53,118 @@ sequelize.authenticate()
     modelName: "Usuario"
   });
 
-  Usuario.addHook('beforeCreate', (usuario, options) => {
-    usuario.Senha = hashPassword(usuario.Senha);
+  Usuario.beforeCreate(function(usuario, options) {
+    novaSenha = hashPassword(usuario.senha);
+    usuario.senha = novaSenha;
     return usuario;
   });
+
+  Usuario.beforeBulkCreate(function(usuarios, options) {
+    for (usuario of usuarios) {
+      newpwd = hashPassword(usuario.senha);
+      usuario.senha = newpwd;
+    }
+    return usuarios;
+  })
+  
+  Usuario.updatePWD = function(usuario, cb) {
+    try {
+      let hashed = hashPassword(usuario.senha);
+  
+      Usuario.update(
+        {
+          "senha": hashed
+        },
+        {
+          where: {
+            "email": usuario.email
+          }
+        }
+      )
+      .then(
+        data => cb(null, data)
+      )
+      .catch(
+        error => cb(error, null)
+      )
+    } catch(error) {
+      cb(error, null)
+    }
+  }
+  
+  Usuario.putByID = function(usuario, cb) {
+    try {
+      let hashed = hashPassword(usuario.senha);
+      Usuario.upsert(usuario)
+      .then(
+        data => cb(null, data)
+      )
+      .catch(
+        errors => cb(errors, null)
+      )
+    } catch(error) {
+      cb(error, null);
+    }
+  }
+
+  Usuario.validatePassword = function(senha, data, callback) {
+  
+    try {
+  
+      let hash = bcrypt.compareSync(senha, data[0].senha);
+      callback(null, hash);
+    
+    } catch (error) {
+      
+      callback(error, null);
+    
+    }
+  
+  }
+  Usuario.generateToken = function(values, callback) {
+
+    let data = {
+      "email": values[0].email,
+      "nome": values[0].nome,
+      "idUsuario": values[0].idUsuario
+    }
+  
+    try {
+  
+      let token = jwt.sign(
+        data,
+        "cultivando",
+        {
+          expiresIn: "7d"
+        }
+      )
+  
+      callback(null, token);
+  
+    } catch (error) {
+      
+      callback(error, null)
+  
+    }
+  
+  }
+  
+  Usuario.validateToken = function(token, callback) {
+  
+    try {
+      
+      let validate = jwt.verify(token, "cultivando");
+  
+      callback(null, validate);
+  
+    } catch (error) {
+      
+      callback(error, null);
+  
+    }
+  
+  }
+  
 
   //----------------------------------------Entrevista----------------------------------------
 
@@ -236,5 +348,6 @@ sequelize.authenticate()
     Pipeline,
     Demografia,
     Entrevista,
-    Usuario
+    Usuario,
+    hashPassword
   };
