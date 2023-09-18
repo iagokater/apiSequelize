@@ -1,8 +1,10 @@
 const cargo = require('../controller/Cargo');
 const router = require("express").Router();
+const login = require('../utils/login');
+const roles = require('../utils/roles');
 
 router.route ("/") 
-    .get(cargo.getAll)
+    .get( login.verifyToken, roles.analistaRole, cargo.getAll)
     .post(cargo.create)
     .put(cargo.update);
 
